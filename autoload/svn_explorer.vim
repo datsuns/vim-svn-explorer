@@ -1,36 +1,75 @@
 
 function! svn_explorer#init() abort
-  let s:url = ""
 endfunction
 
 function! svn_explorer#open(...) abort
   echom a:0
   if a:0 == 0
-    let s:url = 'https://github.com/datsuns/vim-settings.git' 
+    let l:path = 'https://github.com/datsuns/vim-settings.git' 
   else
-    let s:url = a:1
+    let l:path = a:1
   endif
-  call s:show(s:url)
+  let l:path .= '/'
+  call s:show(l:path)
 endfunction
 
 function! svn_explorer#down() abort
-  let l:now = substitute(s:url, '/\+$', '', '')
-  let s:url = l:now .'/' . getline('.')
-  call s:show(s:url)
+  if !s:valid_pos()
+    return
+  endif
+
+  let l:next = s:gen_child_url()
+  call s:show(l:next)
 endfunction
 
 function! svn_explorer#up() abort
-  let l:now = substitute(s:url, '/\+$', '', '')
-  let l:next = fnamemodify(l:now, ':h')
+  if !s:valid_pos()
+    return
+  endif
+
+  let l:next = s:gen_up_url()
   if empty(l:next)
     return
   endif
-  let s:url = l:next
-  call s:show(s:url)
+  let l:next .= '/'
+  call s:show(l:next)
 endfunction
 
-function! s:show(path) abort
-  "echom a:path
+function! s:show(url) abort
+  echom a:url
+  if a:url[len(a:url) - 1] == '/'
+    call s:show_path(a:url)
+  else
+    call s:show_file(a:url)
+  endif
+endfunction
+
+function! s:valid_pos() abort
+  let pos = getpos('.')
+  if pos[1] < 3
+    return v:false
+  else
+    return v:true
+  endif
+endfunction
+
+function! s:load_url() abort
+  return getline(1)
+endfunction
+
+function! s:gen_child_url() abort
+  let l:now = substitute(s:load_url(), '/\+$', '', '')
+  let l:next = l:now .'/' . getline('.')
+  return l:next
+endfunction
+
+function! s:gen_up_url() abort
+  let l:now = substitute(s:load_url(), '/\+$', '', '')
+  let l:next = fnamemodify(l:now, ':h')
+  return l:next
+endfunction
+
+function! s:show_path(path) abort
   let l:log = systemlist('svn ls ' . a:path)
   let l:entries = []
   for line in l:log
@@ -42,9 +81,24 @@ function! s:show(path) abort
   setlocal filetype=svn_explorer buftype=nofile bufhidden=wipe nobuflisted noswapfile
   setlocal nowrap cursorline
 
-  silent keepmarks keepjumps call setline(1, sort(l:entries, function('s:sort')))
+  silent keepmarks keepjumps call setline(1, a:path)
+  silent keepmarks keepjumps call setline(2, "================================")
+
+  silent keepmarks keepjumps call setline(3, sort(l:entries, function('s:sort')))
+  call cursor(3, 0)
 
   setlocal nomodified nomodifiable
+endfunction
+
+function! s:show_file(path) abort
+  let l:name = fnamemodify(a:path, ':t')
+  let l:log = systemlist('svn cat ' . a:path)
+
+  execute ':tabnew'
+  setlocal modifiable
+  silent keepmarks keepjumps call setline(1, l:log)
+  setlocal nomodified nomodifiable
+  execute ':edit ' . l:name
 endfunction
 
 function! s:sort(lhs, rhs) abort
