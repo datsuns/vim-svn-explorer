@@ -14,18 +14,31 @@ function! svn_explorer#open(...) abort
 endfunction
 
 function! svn_explorer#down() abort
-  let s:url .= getline('.')
+  let l:now = substitute(s:url, '/\+$', '', '')
+  let s:url = l:now .'/' . getline('.')
   call s:show(s:url)
 endfunction
 
 function! svn_explorer#up() abort
+  let l:now = substitute(s:url, '/\+$', '', '')
+  let l:next = fnamemodify(l:now, ':h')
+  if empty(l:next)
+    return
+  endif
+  let s:url = l:next
+  call s:show(s:url)
 endfunction
 
 function! s:show(path) abort
-  echom a:path
-  let l:entries = systemlist('svn ls ' . a:path)
+  "echom a:path
+  let l:log = systemlist('svn ls ' . a:path)
+  let l:entries = []
+  for line in l:log
+    let l:entries += [substitute(line, '\r', '', 'g')]
+  endfor
 
   setlocal modifiable
+  silent keepmarks keepjumps %delete _
   setlocal filetype=svn_explorer buftype=nofile bufhidden=wipe nobuflisted noswapfile
   setlocal nowrap cursorline
 
