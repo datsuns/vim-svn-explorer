@@ -36,7 +36,7 @@ function! svn_explorer#up() abort
 endfunction
 
 function! s:show(url) abort
-  echom a:url
+  "echom a:url
   if a:url[len(a:url) - 1] == '/'
     call s:show_path(a:url)
   else
@@ -92,13 +92,17 @@ endfunction
 
 function! s:show_file(path) abort
   let l:name = fnamemodify(a:path, ':t')
+  let l:ft = fnamemodify(a:path, ':e')
+  if len(l:ft) == 0
+    let l:ft = l:name
+  endif
   let l:log = systemlist('svn cat ' . a:path)
 
   execute ':tabnew'
   setlocal modifiable
   silent keepmarks keepjumps call setline(1, l:log)
+  execute ':set ft=' . l:ft
   setlocal nomodified nomodifiable
-  execute ':edit ' . l:name
 endfunction
 
 function! s:sort(lhs, rhs) abort
